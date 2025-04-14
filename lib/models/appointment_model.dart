@@ -1,79 +1,77 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+enum AppointmentStatus {
+  pending,
+  confirmed,
+  completed,
+  cancelled,
+  noShow
+}
+
 class AppointmentModel {
   final String id;
   final String userId;
   final String barberId;
-  final String barberName;
-  final String customerName;
-  final String serviceName;
+  final String serviceId;
   final DateTime date;
-  final String time;
-  final String service;
   final String status;
+  final double price;
+  final String? notes;
   final DateTime createdAt;
-  final DateTime? updatedAt;
+  final DateTime updatedAt;
 
   AppointmentModel({
     required this.id,
     required this.userId,
     required this.barberId,
-    required this.barberName,
-    required this.customerName,
-    required this.serviceName,
+    required this.serviceId,
     required this.date,
-    required this.time,
-    required this.service,
     required this.status,
+    required this.price,
+    this.notes,
     required this.createdAt,
-    this.updatedAt,
+    required this.updatedAt,
   });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'userId': userId,
-      'barberId': barberId,
-      'barberName': barberName,
-      'customerName': customerName,
-      'serviceName': serviceName,
-      'date': Timestamp.fromDate(date),
-      'time': time,
-      'service': service,
-      'status': status,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
-    };
-  }
 
   factory AppointmentModel.fromMap(Map<String, dynamic> map) {
     return AppointmentModel(
       id: map['id'] ?? '',
       userId: map['userId'] ?? '',
       barberId: map['barberId'] ?? '',
-      barberName: map['barberName'] ?? '',
-      customerName: map['customerName'] ?? '',
-      serviceName: map['serviceName'] ?? '',
+      serviceId: map['serviceId'] ?? '',
       date: (map['date'] as Timestamp).toDate(),
-      time: map['time'] ?? '',
-      service: map['service'] ?? '',
-      status: map['status'] ?? 'pending',
+      status: map['status'] ?? AppointmentStatus.pending.toString(),
+      price: (map['price'] ?? 0.0).toDouble(),
+      notes: map['notes'],
       createdAt: (map['createdAt'] as Timestamp).toDate(),
-      updatedAt: map['updatedAt'] != null ? (map['updatedAt'] as Timestamp).toDate() : null,
+      updatedAt: (map['updatedAt'] as Timestamp).toDate(),
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'userId': userId,
+      'barberId': barberId,
+      'serviceId': serviceId,
+      'date': Timestamp.fromDate(date),
+      'status': status,
+      'price': price,
+      'notes': notes,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'updatedAt': Timestamp.fromDate(updatedAt),
+    };
   }
 
   AppointmentModel copyWith({
     String? id,
     String? userId,
     String? barberId,
-    String? barberName,
-    String? customerName,
-    String? serviceName,
+    String? serviceId,
     DateTime? date,
-    String? time,
-    String? service,
     String? status,
+    double? price,
+    String? notes,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -81,15 +79,19 @@ class AppointmentModel {
       id: id ?? this.id,
       userId: userId ?? this.userId,
       barberId: barberId ?? this.barberId,
-      barberName: barberName ?? this.barberName,
-      customerName: customerName ?? this.customerName,
-      serviceName: serviceName ?? this.serviceName,
+      serviceId: serviceId ?? this.serviceId,
       date: date ?? this.date,
-      time: time ?? this.time,
-      service: service ?? this.service,
       status: status ?? this.status,
+      price: price ?? this.price,
+      notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
-} 
+
+  bool get isPending => status == AppointmentStatus.pending.toString();
+  bool get isConfirmed => status == AppointmentStatus.confirmed.toString();
+  bool get isCompleted => status == AppointmentStatus.completed.toString();
+  bool get isCancelled => status == AppointmentStatus.cancelled.toString();
+  bool get isNoShow => status == AppointmentStatus.noShow.toString();
+}

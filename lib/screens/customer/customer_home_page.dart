@@ -154,7 +154,7 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
       if (mounted) {
         setState(() {
           _nearbyBarbers = barbers.map((barber) => {
-            'id': barber.id,
+            'uid': barber.uid,
             'name': barber.name,
             'imageUrl': barber.profileImageUrl ?? '',
             'rating': barber.rating ?? 0.0,
@@ -398,7 +398,7 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                   child: ServiceCard(
                     title: barber['name'],
                     imageUrl: barber['imageUrl'],
-                    onTap: () => _onBarberTap(barber['id']),
+                    onTap: () => _onBarberTap(barber['uid']),
                     actions: [
                       Row(
                         children: [

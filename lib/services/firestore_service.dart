@@ -33,7 +33,7 @@ class FirestoreService {
   Future<void> createUserDocument(UserModel user) async {
     try {
       final userData = user.toMap();
-      await _firestore.collection('users').doc(user.id).set(userData);
+      await _firestore.collection('users').doc(user.uid).set(userData);
     } catch (e) {
       print('Error creating user document: $e');
       rethrow;
@@ -43,7 +43,7 @@ class FirestoreService {
   Future<void> updateUserDocument(UserModel user) async {
     try {
       final userData = user.toMap();
-      await _firestore.collection('users').doc(user.id).update(userData);
+      await _firestore.collection('users').doc(user.uid).update(userData);
     } catch (e) {
       print('Error updating user document: $e');
       rethrow;

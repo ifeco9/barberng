@@ -1,160 +1,108 @@
 import 'package:flutter/material.dart';
+import '../../models/appointment.dart';
 import '../../models/user_model.dart';
-import '../../models/appointment_model.dart';
-import '../../services/firestore_service.dart';
+import '../../services/appointment_service.dart';
 
-class AppointmentsScreen extends StatefulWidget {
+class AppointmentsScreen extends StatelessWidget {
+  final AppointmentService _appointmentService = AppointmentService();
   final UserModel userData;
 
-  const AppointmentsScreen({
+  AppointmentsScreen({
     Key? key,
     required this.userData,
   }) : super(key: key);
-
-  @override
-  State<AppointmentsScreen> createState() => _AppointmentsScreenState();
-}
-
-class _AppointmentsScreenState extends State<AppointmentsScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
-  List<AppointmentModel> _appointments = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadAppointments();
-  }
-
-  Future<void> _loadAppointments() async {
-    try {
-      final appointments = await _firestoreService.getAppointments();
-      setState(() {
-        _appointments = appointments;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-      _showError('Error loading appointments: $e');
-    }
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Appointments'),
-        backgroundColor: Colors.green,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _appointments.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.calendar_today, size: 64, color: Colors.grey[400]),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No appointments yet',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.grey[600],
-                    ),
+      body: StreamBuilder<List<Appointment>>(
+        stream: _appointmentService.getUserAppointments(userData.uid),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('Error: ${snapshot.error}'),
+            );
+          }
+
+          if (!snapshot.hasData) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+
+          final appointments = snapshot.data!;
+
+          if (appointments.isEmpty) {
+            return const Center(
+              child: Text('No appointments found'),
+            );
+          }
+
+          return ListView.builder(
+            itemCount: appointments.length,
+            itemBuilder: (context, index) {
+              final appointment = appointments[index];
+              return Card(
+                margin: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: ListTile(
+                  title: Text(
+                    'Appointment for ${appointment.serviceName}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Your appointments will appear here',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[500],
-                    ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Time: ${_formatDateTime(appointment.dateTime)}'),
+                      Text('Service: ${appointment.serviceName}'),
+                      Text('Status: ${appointment.status.toUpperCase()}'),
+                      Text('Price: \$${appointment.price.toStringAsFixed(2)}'),
+                    ],
                   ),
-                ],
-              ),
-            )
-          : ListView.builder(
-              itemCount: _appointments.length,
-              itemBuilder: (context, index) {
-                final appointment = _appointments[index];
-                return _AppointmentCard(appointment: appointment);
-              },
-            ),
-    );
-  }
-}
-
-class _AppointmentCard extends StatelessWidget {
-  final AppointmentModel appointment;
-
-  const _AppointmentCard({required this.appointment});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.green,
-          child: Text(
-            appointment.date.day.toString(),
-            style: const TextStyle(color: Colors.white),
-          ),
-        ),
-        title: Text(
-          'Appointment with ${appointment.barberName}',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Date: ${_formatDate(appointment.date)}'),
-            Text('Time: ${_formatTime(appointment.time)}'),
-            Text('Service: ${appointment.service}'),
-            Text('Status: ${appointment.status}'),
-          ],
-        ),
-        trailing: _buildStatusIcon(appointment.status),
+                  trailing: _getStatusChip(appointment.status),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
-  }
-
-  String _formatTime(String time) {
-    return time;
-  }
-
-  Widget _buildStatusIcon(String status) {
-    IconData icon;
+  Widget _getStatusChip(String status) {
     Color color;
-
     switch (status.toLowerCase()) {
-      case 'confirmed':
-        icon = Icons.check_circle;
-        color = Colors.green;
-        break;
       case 'pending':
-        icon = Icons.pending;
         color = Colors.orange;
         break;
-      case 'cancelled':
-        icon = Icons.cancel;
+      case 'accepted':
+        color = Colors.blue;
+        break;
+      case 'completed':
+        color = Colors.green;
+        break;
+      case 'rejected':
         color = Colors.red;
         break;
       default:
-        icon = Icons.help;
         color = Colors.grey;
     }
 
-    return Icon(icon, color: color);
+    return Chip(
+      label: Text(
+        status.toUpperCase(),
+        style: const TextStyle(color: Colors.white),
+      ),
+      backgroundColor: color,
+    );
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 } 

@@ -19,6 +19,7 @@ import 'screens/customer/service_search_screen.dart';
 import 'screens/customer/product_details_screen.dart';
 import 'screens/barber/barber_profile_screen.dart';
 import 'models/user_model.dart';
+import 'screens/splash_screen.dart';
 
 Future<void> _checkLocationPermission() async {
   try {
@@ -121,7 +122,8 @@ class BarberApp extends StatelessWidget {
         ),
       ),
       routes: {
-        '/': (context) => const Wrapper(),
+        '/': (context) => const SplashScreen(),
+        '/wrapper': (context) => const Wrapper(),
         '/onboarding': (context) => const OnboardingScreen(),
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignupScreen(),

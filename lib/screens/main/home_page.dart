@@ -39,7 +39,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadUserData() async {
     try {
       setState(() => _isLoading = true);
-      final updatedUserData = await _firestoreService.getUserById(_userData!.id);
+      final updatedUserData = await _firestoreService.getUserById(_userData!.uid);
       if (updatedUserData != null) {
         setState(() {
           _userData = updatedUserData;
@@ -136,7 +136,7 @@ class _BarberDashboard extends StatelessWidget {
 
   Widget _buildStatsGrid(BuildContext context) {
     return StreamBuilder<List<AppointmentModel>>(
-      stream: FirestoreService().streamBarberAppointments(userData.id),
+      stream: FirestoreService().streamBarberAppointments(userData.uid),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _buildLoadingStatsGrid();
@@ -381,7 +381,7 @@ class _BarberDashboard extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         StreamBuilder<List<AppointmentModel>>(
-          stream: FirestoreService().streamBarberAppointments(userData.id),
+          stream: FirestoreService().streamBarberAppointments(userData.uid),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return _buildLoadingAppointments();
@@ -678,7 +678,7 @@ class _AddAppointmentScreenState extends State<_AddAppointmentScreen> {
     setState(() => _isLoading = true);
     try {
       final appointmentData = {
-        'barberId': widget.barber.id,
+        'barberId': widget.barber.uid,
         'barberName': widget.barber.name,
         'customerName': _customerNameController.text.trim(),
         'customerPhone': _customerPhoneController.text.trim(),
@@ -968,7 +968,7 @@ class _BarberAppointmentsState extends State<_BarberAppointments> {
         backgroundColor: Colors.green,
       ),
       body: StreamBuilder<List<AppointmentModel>>(
-        stream: FirestoreService().streamBarberAppointments(widget.userData.id),
+        stream: FirestoreService().streamBarberAppointments(widget.userData.uid),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildLoadingSkeleton();
@@ -1296,7 +1296,7 @@ class _CustomerAppointmentsState extends State<_CustomerAppointments> {
         backgroundColor: Colors.green,
       ),
       body: StreamBuilder<List<AppointmentModel>>(
-        stream: FirestoreService().getCustomerAppointments(widget.userData.id),
+        stream: FirestoreService().getCustomerAppointments(widget.userData.uid),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildLoadingSkeleton();

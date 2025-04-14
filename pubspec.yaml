@@ -28,6 +28,7 @@ dependencies:
   cached_network_image: ^3.3.0
   page_indicator: ^0.4.1
   fluttertoast: ^8.2.2
+  connectivity_plus: ^4.0.2
 
 
 
@@ -36,6 +37,7 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^2.0.0
+  analyzer: ^6.1.0
 
 flutter:
   uses-material-design: true

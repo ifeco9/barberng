@@ -1,7 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/user_model.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Auth state changes stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -84,7 +87,7 @@ class AuthService {
           email: email,
           password: password,
         );
-        
+
         // Verify we have a valid user
         if (userCredential.user == null) {
           throw FirebaseAuthException(
@@ -92,13 +95,13 @@ class AuthService {
             message: 'Authentication succeeded but user is null.',
           );
         }
-        
+
         return userCredential;
       } catch (e) {
         // Check if this is the PigeonUserDetails error
         if (e.toString().contains('PigeonUserDetails')) {
           print('Detected PigeonUserDetails error, attempting to recover...');
-          
+
           // Try to get the current user directly
           final currentUser = _auth.currentUser;
           if (currentUser != null) {
@@ -138,4 +141,65 @@ class AuthService {
 
   // Get current user
   User? get currentUser => _auth.currentUser;
+
+  // Register with email and password
+  Future<UserCredential> registerWithEmailAndPassword(
+      String email,
+      String password,
+      String name,
+      String phoneNumber,
+      bool isServiceProvider,
+      ) async {
+    try {
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // Create user document in Firestore
+      final user = UserModel(
+        uid: userCredential.user!.uid,
+        name: name,
+        email: email,
+        phoneNumber: phoneNumber,
+        isServiceProvider: isServiceProvider,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      await _firestore.collection('users').doc(user.uid).set(user.toMap());
+
+      return userCredential;
+    } catch (e) {
+      print('Error registering: $e');
+      rethrow;
+    }
+  }
+
+  // Update user profile
+  Future<void> updateUserProfile(String userId, Map<String, dynamic> data) async {
+    try {
+      await _firestore.collection('users').doc(userId).update({
+        ...data,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Error updating user profile: $e');
+      rethrow;
+    }
+  }
+
+  // Get user data
+  Future<UserModel?> getUserData(String userId) async {
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      if (doc.exists) {
+        return UserModel.fromMap(doc.data()!);
+      }
+      return null;
+    } catch (e) {
+      print('Error getting user data: $e');
+      rethrow;
+    }
+  }
 }

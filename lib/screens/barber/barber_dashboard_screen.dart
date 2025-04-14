@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../services/barber_service.dart';
+import '../../services/appointment_service.dart';
+import '../../models/appointment.dart';
 import '../../models/user_model.dart';
-import '../../models/appointment_model.dart';
-import '../../services/firestore_service.dart';
-import '../../widgets/custom_card.dart';
-import '../../widgets/custom_loading_indicator.dart';
-import '../../widgets/custom_empty_state.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../../widgets/statistics_card.dart';
+import '../../widgets/appointment_card.dart';
+import '../../widgets/quick_action_button.dart';
 
 class BarberDashboardScreen extends StatefulWidget {
   final UserModel userData;
-
+  
   const BarberDashboardScreen({
     Key? key,
     required this.userData,
@@ -20,54 +21,37 @@ class BarberDashboardScreen extends StatefulWidget {
 }
 
 class _BarberDashboardScreenState extends State<BarberDashboardScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
+  final BarberService _barberService = BarberService();
+  final AppointmentService _appointmentService = AppointmentService();
+  Map<String, dynamic> _statistics = {};
   bool _isLoading = true;
-  List<AppointmentModel> _recentAppointments = [];
-  Map<String, int> _stats = {
-    'total': 0,
-    'completed': 0,
-    'pending': 0,
-    'cancelled': 0,
-  };
 
   @override
   void initState() {
     super.initState();
-    _loadDashboard();
+    _loadStatistics();
   }
 
-  Future<void> _loadDashboard() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadStatistics() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final barber = await _firestoreService.getBarberByUserId(user.uid);
-        if (barber != null) {
-          // Subscribe to appointments stream
-          _firestoreService.streamBarberAppointments(barber['userId']).listen((appointments) {
-            setState(() {
-              _recentAppointments = appointments.take(5).toList();
-              _stats = {
-                'total': appointments.length,
-                'completed': appointments.where((a) => a.status == 'completed').length,
-                'pending': appointments.where((a) => a.status == 'pending').length,
-                'cancelled': appointments.where((a) => a.status == 'cancelled').length,
-              };
-              _isLoading = false;
-            });
-          });
-        }
-      }
+      final now = DateTime.now();
+      final startOfMonth = DateTime(now.year, now.month, 1);
+      final endOfMonth = DateTime(now.year, now.month + 1, 0);
+
+      final stats = await _barberService.getBarberStatistics(
+        widget.userData.uid,
+        startOfMonth,
+        endOfMonth,
+      );
+
+      setState(() {
+        _statistics = stats;
+        _isLoading = false;
+      });
     } catch (e) {
-      print('Error loading dashboard: $e');
+      print('Error loading statistics: $e');
       setState(() => _isLoading = false);
     }
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
   }
 
   @override
@@ -75,223 +59,171 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
-        backgroundColor: Colors.green,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadDashboard,
+            onPressed: _loadStatistics,
           ),
         ],
       ),
       body: _isLoading
-          ? const CustomLoadingIndicator()
+          ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: _loadDashboard,
+              onRefresh: _loadStatistics,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildWelcomeSection(),
+                    // Welcome Section
+                    Text(
+                      'Welcome, ${widget.userData.name}!',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Statistics Section
+                    Text(
+                      'Monthly Statistics',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: StatisticsCard(
+                            title: 'Appointments',
+                            value: _statistics['totalAppointments']?.toString() ?? '0',
+                            icon: Icons.calendar_today,
+                            color: Colors.blue,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: StatisticsCard(
+                            title: 'Earnings',
+                            value: '\$${_statistics['totalEarnings']?.toStringAsFixed(2) ?? '0.00'}',
+                            icon: Icons.attach_money,
+                            color: Colors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: StatisticsCard(
+                            title: 'Completed',
+                            value: _statistics['completedAppointments']?.toString() ?? '0',
+                            icon: Icons.check_circle,
+                            color: Colors.green,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: StatisticsCard(
+                            title: 'Cancelled',
+                            value: _statistics['cancelledAppointments']?.toString() ?? '0',
+                            icon: Icons.cancel,
+                            color: Colors.red,
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 24),
-                    _buildStatsSection(),
+
+                    // Quick Actions
+                    Text(
+                      'Quick Actions',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        QuickActionButton(
+                          icon: Icons.add_circle,
+                          label: 'New Service',
+                          onTap: () {
+                            // Navigate to add service screen
+                          },
+                        ),
+                        QuickActionButton(
+                          icon: Icons.inventory,
+                          label: 'Products',
+                          onTap: () {
+                            // Navigate to products screen
+                          },
+                        ),
+                        QuickActionButton(
+                          icon: Icons.schedule,
+                          label: 'Schedule',
+                          onTap: () {
+                            // Navigate to schedule screen
+                          },
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 24),
-                    _buildRecentAppointmentsSection(),
+
+                    // Today's Appointments
+                    Text(
+                      "Today's Appointments",
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    StreamBuilder<List<Appointment>>(
+                      stream: _appointmentService.getBarberAppointments(widget.userData.uid),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Text('Error: ${snapshot.error}'),
+                          );
+                        }
+
+                        if (!snapshot.hasData) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+
+                        final appointments = snapshot.data!
+                            .where((appointment) =>
+                                appointment.dateTime.day == DateTime.now().day &&
+                                appointment.dateTime.month == DateTime.now().month &&
+                                appointment.dateTime.year == DateTime.now().year)
+                            .toList();
+
+                        if (appointments.isEmpty) {
+                          return const Center(
+                            child: Text('No appointments for today'),
+                          );
+                        }
+
+                        return ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: appointments.length,
+                          itemBuilder: (context, index) {
+                            return AppointmentCard(
+                              appointment: appointments[index],
+                              onStatusChanged: (status) async {
+                                await _appointmentService.updateAppointmentStatus(
+                                  appointments[index].id,
+                                  status,
+                                );
+                              },
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
             ),
     );
-  }
-
-  Widget _buildWelcomeSection() {
-    return CustomCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Welcome, ${widget.userData.name}!',
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Here\'s what\'s happening with your business today.',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[600],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Statistics',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          childAspectRatio: 1.5,
-          children: [
-            _buildStatCard(
-              'Total Appointments',
-              _stats['totalAppointments'].toString(),
-              Icons.calendar_today,
-              Colors.blue,
-            ),
-            _buildStatCard(
-              'Today\'s Appointments',
-              _stats['todayAppointments'].toString(),
-              Icons.today,
-              Colors.green,
-            ),
-            _buildStatCard(
-              'Pending Appointments',
-              _stats['pendingAppointments'].toString(),
-              Icons.pending,
-              Colors.orange,
-            ),
-            _buildStatCard(
-              'Completed Appointments',
-              _stats['completedAppointments'].toString(),
-              Icons.check_circle,
-              Colors.purple,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
-    return CustomCard(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 32, color: color),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRecentAppointmentsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Recent Appointments',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        _recentAppointments.isEmpty
-            ? const CustomEmptyState(
-                message: 'No recent appointments',
-                icon: Icons.calendar_today,
-              )
-            : ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _recentAppointments.length,
-                itemBuilder: (context, index) {
-                  final appointment = _recentAppointments[index];
-                  return _buildAppointmentCard(appointment);
-                },
-              ),
-      ],
-    );
-  }
-
-  Widget _buildAppointmentCard(AppointmentModel appointment) {
-    return CustomCard(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.green,
-          child: Text(
-            appointment.customerName[0],
-            style: const TextStyle(color: Colors.white),
-          ),
-        ),
-        title: Text(
-          appointment.customerName,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Service: ${appointment.serviceName}'),
-            Text('Date: ${_formatDate(appointment.date)}'),
-            Text('Time: ${appointment.time}'),
-          ],
-        ),
-        trailing: _buildStatusChip(appointment.status),
-      ),
-    );
-  }
-
-  Widget _buildStatusChip(String status) {
-    Color color;
-    switch (status.toLowerCase()) {
-      case 'confirmed':
-        color = Colors.green;
-        break;
-      case 'pending':
-        color = Colors.orange;
-        break;
-      case 'cancelled':
-        color = Colors.red;
-        break;
-      default:
-        color = Colors.grey;
-    }
-
-    return Chip(
-      label: Text(
-        status,
-        style: const TextStyle(color: Colors.white, fontSize: 12),
-      ),
-      backgroundColor: color,
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
   }
 } 

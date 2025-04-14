@@ -49,7 +49,7 @@ class _BarberServicesScreenState extends State<BarberServicesScreen> {
     setState(() => _isLoading = true);
     
     try {
-      final services = await _firestoreService.getBarberServices(widget.userData.id);
+      final services = await _firestoreService.getBarberServices(widget.userData.uid);
       setState(() {
         _services = services;
         _isLoading = false;
@@ -177,7 +177,7 @@ class _BarberServicesScreenState extends State<BarberServicesScreen> {
         'description': _descriptionController.text,
         'price': double.parse(_priceController.text),
         'duration': int.parse(_durationController.text),
-        'barberId': widget.userData.id,
+        'barberId': widget.userData.uid,
         'createdAt': DateTime.now(),
       };
       

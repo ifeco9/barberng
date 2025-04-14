@@ -49,7 +49,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
       // Create user model
       final userModel = UserModel(
-        id: userCredential.user!.uid,
+        uid: userCredential.user!.uid,
         email: _emailController.text.trim(),
         name: _nameController.text.trim(),
         phoneNumber: _phoneController.text.trim(),

@@ -96,11 +96,12 @@ class _ServiceProviderRegistrationScreenState extends State<ServiceProviderRegis
       
       // Create user model
       final userModel = UserModel(
-        id: userCredential.user!.uid,
+        uid: userCredential.user!.uid,
         email: _emailController.text.trim(),
         name: _nameController.text.trim(),
         phoneNumber: _phoneController.text.trim(),
         isServiceProvider: true,
+        isApproved: false,
         address: _addressController.text.trim(),
         bio: _bioController.text.trim(),
         services: _selectedServices,

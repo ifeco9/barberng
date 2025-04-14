@@ -152,93 +152,197 @@ class _BarberHomePageState extends State<BarberHomePage> {
     });
   }
 
+  Future<void> _loadDashboard() async {
+    setState(() => _isLoading = true);
+    try {
+      await Future.wait([
+        _loadAppointments(),
+        _loadServices(),
+        _loadProducts(),
+        _loadStatistics(),
+      ]);
+    } catch (e) {
+      _showError('Error refreshing dashboard: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading your dashboard...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Validate required data for barbers
+    if (widget.userData.services == null || widget.userData.services!.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Setup Required'),
+          backgroundColor: Colors.green,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  size: 64,
+                  color: Colors.orange,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Setup Required',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Please complete your profile by adding services to get started.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    // Navigate to profile setup
+                    Navigator.pushNamed(
+                      context,
+                      '/barber-profile',
+                      arguments: {'userData': widget.userData},
+                    );
+                  },
+                  child: const Text('Complete Setup'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
-      appBar: CustomAppBar(
-        title: 'BarberNG',
+      appBar: AppBar(
+        title: const Text('Dashboard'),
+        backgroundColor: Colors.green,
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () {
-              // Show notifications
-            },
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadDashboard,
           ),
         ],
       ),
-      body: _isLoading
-          ? const CustomLoadingIndicator()
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildStatistics(),
-                    const SizedBox(height: 24),
-                    _buildTodayAppointments(),
-                    const SizedBox(height: 24),
-                    _buildServices(),
-                    const SizedBox(height: 24),
-                    _buildProducts(),
-                  ],
-                ),
-              ),
+      body: RefreshIndicator(
+        onRefresh: _loadDashboard,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildWelcomeSection(),
+              const SizedBox(height: 24),
+              _buildStatsSection(),
+              const SizedBox(height: 24),
+              _buildRecentAppointmentsSection(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWelcomeSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Welcome back, ${widget.userData.name}!',
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
             ),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: _currentIndex,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavBarItem(
-            icon: Icons.home,
-            label: 'Home',
           ),
-          BottomNavBarItem(
-            icon: Icons.calendar_today,
-            label: 'Appointments',
-          ),
-          BottomNavBarItem(
-            icon: Icons.store,
-            label: 'Services',
-          ),
-          BottomNavBarItem(
-            icon: Icons.person,
-            label: 'Profile',
+          const SizedBox(height: 8),
+          Text(
+            'Here\'s what\'s happening with your business today.',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey.shade700,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatistics() {
+  Widget _buildStatsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const Text(
           'Statistics',
-          style: AppTheme.heading2,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const SizedBox(height: 16),
-        Row(
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 16,
+          childAspectRatio: 1.5,
           children: [
-            Expanded(
-              child: _buildStatCard(
-                title: 'Total Appointments',
-                value: _statistics['totalAppointments'].toString(),
-                icon: Icons.calendar_today,
-                color: AppTheme.primaryColor,
-              ),
+            _buildStatCard(
+              'Total Appointments',
+              _statistics['totalAppointments'].toString(),
+              Icons.calendar_today,
+              Colors.blue,
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildStatCard(
-                title: 'Total Earnings',
-                value: '₦${_statistics['totalEarnings'].toStringAsFixed(2)}',
-                icon: Icons.attach_money,
-                color: Colors.green,
-              ),
+            _buildStatCard(
+              'Completed',
+              _statistics['completedAppointments'].toString(),
+              Icons.check_circle,
+              Colors.green,
+            ),
+            _buildStatCard(
+              'Cancelled',
+              _statistics['cancelledAppointments'].toString(),
+              Icons.cancel,
+              Colors.red,
+            ),
+            _buildStatCard(
+              'Total Earnings',
+              '₦${_statistics['totalEarnings'].toStringAsFixed(2)}',
+              Icons.attach_money,
+              Colors.orange,
             ),
           ],
         ),
@@ -246,100 +350,83 @@ class _BarberHomePageState extends State<BarberHomePage> {
     );
   }
 
-  Widget _buildStatCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color color,
-  }) {
-    return CustomCard(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: AppTheme.bodyText2.copyWith(
-                color: AppTheme.textSecondaryColor,
-              ),
+  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 32),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: color,
             ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: AppTheme.heading3.copyWith(
-                color: color,
-              ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade700,
             ),
-          ],
-        ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildTodayAppointments() {
-    final today = DateTime.now();
-    final todayAppointments = _appointments.where((appointment) {
-      final appointmentDate = (appointment['date'] as Timestamp).toDate();
-      return appointmentDate.year == today.year &&
-          appointmentDate.month == today.month &&
-          appointmentDate.day == today.day;
-    }).toList();
-
+  Widget _buildRecentAppointmentsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Today\'s Appointments',
-          style: AppTheme.heading2,
+        const Text(
+          'Recent Appointments',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const SizedBox(height: 16),
-        if (todayAppointments.isEmpty)
-          const NoResultsEmptyState(
-            message: 'No appointments for today',
-            onClearSearch: null,
+        if (_appointments.isEmpty)
+          const Center(
+            child: Text(
+              'No appointments yet',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+              ),
+            ),
           )
         else
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: todayAppointments.length,
+            itemCount: _appointments.length > 5 ? 5 : _appointments.length,
             itemBuilder: (context, index) {
-              final appointment = todayAppointments[index];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: CustomCard(
-                  child: ListTile(
-                    title: Text(
-                      appointment['customerName'] ?? 'Unknown Customer',
-                      style: AppTheme.heading3,
-                    ),
-                    subtitle: Text(
-                      '${appointment['serviceName'] ?? 'Unknown Service'} - ${DateFormat.jm().format((appointment['time'] as Timestamp).toDate())}',
-                      style: AppTheme.bodyText2,
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.check, color: Colors.green),
-                          onPressed: () => _updateAppointmentStatus(
-                            appointment['id'],
-                            'completed',
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Colors.red),
-                          onPressed: () => _updateAppointmentStatus(
-                            appointment['id'],
-                            'cancelled',
-                          ),
-                        ),
-                      ],
-                    ),
+              final appointment = _appointments[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.green.shade100,
+                    child: const Icon(Icons.person, color: Colors.green),
                   ),
+                  title: Text(appointment['customerName'] ?? 'Unknown Customer'),
+                  subtitle: Text(
+                    DateFormat('MMM dd, yyyy - hh:mm a')
+                        .format((appointment['date'] as Timestamp).toDate()),
+                  ),
+                  trailing: _buildStatusChip(appointment['status'] ?? 'pending'),
                 ),
               );
             },
@@ -348,99 +435,28 @@ class _BarberHomePageState extends State<BarberHomePage> {
     );
   }
 
-  Widget _buildServices() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Services',
-          style: AppTheme.heading2,
-        ),
-        const SizedBox(height: 16),
-        if (_services.isEmpty)
-          const NoResultsEmptyState(
-            message: 'No services available',
-            onClearSearch: null,
-          )
-        else
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _services.length,
-            itemBuilder: (context, index) {
-              final service = _services[index];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: CustomCard(
-                  child: ListTile(
-                    title: Text(
-                      service['name'],
-                      style: AppTheme.heading3,
-                    ),
-                    subtitle: Text(
-                      '₦${service['price'].toStringAsFixed(2)} - ${service['duration']}',
-                      style: AppTheme.bodyText2,
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.edit),
-                      onPressed: () {
-                        // Navigate to edit service page
-                      },
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-      ],
-    );
-  }
+  Widget _buildStatusChip(String status) {
+    Color color;
+    switch (status.toLowerCase()) {
+      case 'completed':
+        color = Colors.green;
+        break;
+      case 'cancelled':
+        color = Colors.red;
+        break;
+      default:
+        color = Colors.orange;
+    }
 
-  Widget _buildProducts() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Products',
-          style: AppTheme.heading2,
+    return Chip(
+      label: Text(
+        status.toUpperCase(),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
         ),
-        const SizedBox(height: 16),
-        if (_products.isEmpty)
-          const NoResultsEmptyState(
-            message: 'No products available',
-            onClearSearch: null,
-          )
-        else
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _products.length,
-            itemBuilder: (context, index) {
-              final product = _products[index];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: CustomCard(
-                  child: ListTile(
-                    title: Text(
-                      product['name'],
-                      style: AppTheme.heading3,
-                    ),
-                    subtitle: Text(
-                      '₦${product['price'].toStringAsFixed(2)} - ${product['stock']} in stock',
-                      style: AppTheme.bodyText2,
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.edit),
-                      onPressed: () {
-                        // Navigate to edit product page
-                      },
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-      ],
+      ),
+      backgroundColor: color,
     );
   }
 } 

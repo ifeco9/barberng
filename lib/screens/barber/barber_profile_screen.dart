@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
-import '../../services/firestore_service.dart';
 import '../../services/storage_service.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/custom_loading_indicator.dart';
 
@@ -19,11 +19,11 @@ class BarberProfileScreen extends StatefulWidget {
 }
 
 class _BarberProfileScreenState extends State<BarberProfileScreen> {
-  final _firestoreService = FirestoreService();
-  final _storageService = StorageService();
-  bool _isLoading = false;
+  final StorageService _storageService = StorageService();
+  final AuthService _authService = AuthService();
   File? _imageFile;
   String? _profileImageUrl;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -31,72 +31,40 @@ class _BarberProfileScreenState extends State<BarberProfileScreen> {
     _profileImageUrl = widget.userData.profileImageUrl;
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _pickAndUploadImage() async {
+    setState(() => _isLoading = true);
     try {
       final image = await _storageService.pickImage();
       if (image != null) {
-        setState(() {
-          _imageFile = image;
-        });
-      }
-    } catch (e) {
-      _showError('Error picking image: $e');
-    }
-  }
-
-  Future<void> _uploadImage() async {
-    if (_imageFile == null) return;
-
-    setState(() => _isLoading = true);
-    try {
-      final imageUrl = await _storageService.uploadProfileImage(
-        _imageFile!,
-        widget.userData.id,
-      );
-
-      if (imageUrl != null) {
+        setState(() => _imageFile = image);
+        
         // Delete old image if exists
         if (_profileImageUrl != null) {
           await _storageService.deleteProfileImage(_profileImageUrl!);
         }
 
-        // Update user profile with new image URL
-        final updatedUser = widget.userData.copyWith(
-          profileImageUrl: imageUrl,
-          updatedAt: DateTime.now(),
+        // Upload new image
+        final imageUrl = await _storageService.uploadProfileImage(
+          _imageFile!,
+          widget.userData.uid,
         );
 
-        await _firestoreService.updateUserDocument(updatedUser);
-
-      setState(() {
-          _profileImageUrl = imageUrl;
-          _imageFile = null;
-        });
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Profile image updated successfully'),
-              backgroundColor: Colors.green,
-            ),
+        if (imageUrl != null) {
+          setState(() => _profileImageUrl = imageUrl);
+          // Update user profile in database
+          await _authService.updateUserProfile(
+            widget.userData.uid,
+            {'profileImageUrl': imageUrl},
           );
         }
       }
     } catch (e) {
-      _showError('Error uploading image: $e');
+      print('Error updating profile image: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to update profile image')),
+      );
     } finally {
       setState(() => _isLoading = false);
-    }
-  }
-
-  void _showError(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 
@@ -110,13 +78,13 @@ class _BarberProfileScreenState extends State<BarberProfileScreen> {
           ? const CustomLoadingIndicator()
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
-                child: Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   GestureDetector(
-                    onTap: _pickImage,
+                    onTap: _pickAndUploadImage,
                     child: Stack(
-                  children: [
+                      children: [
                         CircleAvatar(
                           radius: 60,
                           backgroundColor: Colors.grey[200],
@@ -156,20 +124,6 @@ class _BarberProfileScreenState extends State<BarberProfileScreen> {
                       ],
                     ),
                   ),
-                  if (_imageFile != null) ...[
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: _uploadImage,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 12,
-                        ),
-                      ),
-                      child: const Text('Upload Image'),
-                    ),
-                  ],
                   const SizedBox(height: 24),
                   _buildProfileInfo(),
                 ],
@@ -182,12 +136,12 @@ class _BarberProfileScreenState extends State<BarberProfileScreen> {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-      child: Column(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+          children: [
             _buildInfoRow('Name', widget.userData.name),
             _buildInfoRow('Email', widget.userData.email),
-            _buildInfoRow('Phone', widget.userData.phoneNumber),
+            _buildInfoRow('Phone', widget.userData.phoneNumber ?? 'Not provided'),
             if (widget.userData.address != null)
               _buildInfoRow('Address', widget.userData.address!),
             if (widget.userData.bio != null)
@@ -219,7 +173,7 @@ class _BarberProfileScreenState extends State<BarberProfileScreen> {
             child: Text(
               label,
               style: const TextStyle(
-              fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.bold,
                 color: Colors.grey,
               ),
             ),
