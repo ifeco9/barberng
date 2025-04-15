@@ -1,0 +1,97 @@
+Folder PATH listing
+Volume serial number is 40C4-D8DF
+C:.
+³   file.txt
+³   main.dart
+³   wrapper.dart
+³   
+ÃÄÄÄmodels
+³       appointment.dart
+³       appointment_model.dart
+³       product_model.dart
+³       service_model.dart
+³       user_model.dart
+³       
+ÃÄÄÄproviders
+³       user_provider.dart
+³       
+ÃÄÄÄscreens
+³   ³   splash_screen.dart
+³   ³   
+³   ÃÄÄÄauth
+³   ³       barber_signup_screen.dart
+³   ³       customer_signup_screen.dart
+³   ³       login_screen.dart
+³   ³       service_provider_registration_screen.dart
+³   ³       signup_screen.dart
+³   ³       user_type_selection_screen.dart
+³   ³       
+³   ÃÄÄÄbarber
+³   ³       barber_dashboard_screen.dart
+³   ³       barber_home_page.dart
+³   ³       barber_products_screen.dart
+³   ³       barber_profile_screen.dart
+³   ³       barber_services_screen.dart
+³   ³       
+³   ÃÄÄÄcustomer
+³   ³       appointments_screen.dart
+³   ³       book_appointment_screen.dart
+³   ³       customer_home_page.dart
+³   ³       product_details_screen.dart
+³   ³       product_search_screen.dart
+³   ³       profile_screen.dart
+³   ³       service_search_screen.dart
+³   ³       
+³   ÃÄÄÄmain
+³   ³   ³   appointments_screen.dart
+³   ³   ³   barber_profile.dart
+³   ³   ³   browse_barbers.dart
+³   ³   ³   home_page.dart
+³   ³   ³   profile_screen.dart
+³   ³   ³   
+³   ³   ÃÄÄÄbarber
+³   ³   ³       barber_home_page.dart
+³   ³   ³       
+³   ³   ÀÄÄÄcustomer
+³   ³           browse_barbers.dart
+³   ³           customer_home_page.dart
+³   ³           
+³   ÃÄÄÄmaintenance
+³   ³       maintenance_screen.dart
+³   ³       
+³   ÃÄÄÄmodels
+³   ÃÄÄÄonboarding
+³   ³       onboarding_screen.dart
+³   ³       splash_screen.dart
+³   ³       
+³   ÃÄÄÄregistration
+³   ³       registration_screen.dart
+³   ³       
+³   ÀÄÄÄservice_provider
+³           barber_profile_screen.dart
+³           
+ÃÄÄÄservices
+³       appointment_service.dart
+³       auth_service.dart
+³       barber_service.dart
+³       customer_service.dart
+³       firestore_service.dart
+³       storage_service.dart
+³       
+ÃÄÄÄtheme
+³       app_theme.dart
+³       
+ÀÄÄÄwidgets
+        appointment_card.dart
+        custom_appbar.dart
+        custom_app_bar.dart
+        custom_bottom_nav_bar.dart
+        custom_button.dart
+        custom_card.dart
+        custom_empty_state.dart
+        custom_input_field.dart
+        custom_loading_indicator.dart
+        quick_action_button.dart
+        statistics_card.dart
+        user_type_wrapper.dart
+        

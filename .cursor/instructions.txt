@@ -1,0 +1,424 @@
+1. User Type Enforcement Protocol
+
+Implement strict registration path separation:
+
+Customer registration: Explicitly set isServiceProvider=false in Firestore
+
+Barber registration: Require admin approval process before setting isServiceProvider=true
+
+Add server-side validation through Firebase Functions to prevent manual field modification
+
+2. Authentication Flow Correction
+
+Establish pre-login validation checkpoints:
+
+Verify Firestore document exists for authenticated UID
+
+Confirm isServiceProvider field exists and is boolean type
+
+Implement 3-second loading buffer to prevent premature navigation
+
+Add automatic redirect if user accesses wrong portal (barber→customer UI)
+
+3. Firestore Data Integrity Measures
+
+Create schema validation rules:
+
+javascript
+Copy
+match /users/{userId} {
+  allow read: if request.auth.uid == userId;
+  allow write: if request.resource.data.keys().hasAll(['isServiceProvider']) 
+              && typeof(request.resource.data.isServiceProvider) == 'boolean';
+}
+Implement historical versioning for user type changes
+
+Set up Cloud Function triggers to audit permission changes
+
+4. UI Rendering Safeguards
+
+Develop multi-layer rendering checks:
+
+Device-level authentication state verification
+
+Fresh Firestore data fetch on app resume
+
+Visual confirmation system (watermark overlays showing user type)
+
+Feature lockdown for mismatched permissions
+
+5. Debugging Infrastructure
+
+Implement forensic logging:
+
+Track user type decision path through analytics events
+
+Record screen transition attempts with timestamp/UID
+
+Create error taxonomy:
+
+E1: Missing user type flag
+
+E2: UI-component mismatch
+
+E3: Cross-role access attempt
+
+6. Recovery Protocol
+
+Build automatic fallback states:
+
+If user type undefined → redirect to role selection
+
+If data mismatch detected → trigger admin alert
+
+Persistent errors → temporary access revocation
+
+Develop manual override system with admin PIN protection
+
+7. Testing Matrix Requirements
+
+Create 12 test scenarios:
+
+User Type	Login Method	Network State	Expected Outcome
+Valid Customer	Email	Online	Customer UI
+Valid Barber	Email	Offline	Barber UI (cached)
+... (expand with edge cases)
+8. User Session Hardening
+
+Implement session fingerprinting:
+
+Device ID binding
+
+Location pattern analysis
+
+Usage behavior profiling
+
+Establish automatic session termination for:
+
+Cross-role component access attempts
+
+Rapid screen switching anomalies
+
+Backend data conflicts
+
+9. UI Component Isolation
+
+Develop feature quarantine system:
+
+Barber-specific components self-disable in customer context
+
+Customer features auto-hide with CSS masking in barber UI
+
+Implement runtime component validation checks
+
+10. Continuous Monitoring Setup
+
+Configure real-time alerts for:
+
+User type field modifications
+
+Cross-portal navigation patterns
+
+Authentication state conflicts
+
+Build dashboard tracking:
+
+Role-based active sessions
+
+UI rendering failures
+
+Permission validation latency
+
+Implementation Strategy:
+
+Start with data integrity audits (points 3,10)
+
+Build authentication safeguards (points 2,8)
+
+Implement UI quarantine system (points 4,9)
+
+Deploy monitoring infrastructure (points 5,10)
+
+Critical First Steps:
+
+Export all user documents and verify isServiceProvider field:
+
+Existence check
+
+Boolean validation
+
+Historical consistency audit
+
+Implement temporary client-side lockdown:
+
+Show maintenance screen during role validation
+
+Disable all role-specific features until validation completes
+1. User Type Enforcement Protocol
+
+Implement strict registration path separation:
+
+Customer registration: Explicitly set isServiceProvider=false in Firestore
+
+Barber registration: Require admin approval process before setting isServiceProvider=true
+
+Add server-side validation through Firebase Functions to prevent manual field modification
+
+2. Authentication Flow Correction
+
+Establish pre-login validation checkpoints:
+
+Verify Firestore document exists for authenticated UID
+
+Confirm isServiceProvider field exists and is boolean type
+
+Implement 3-second loading buffer to prevent premature navigation
+
+Add automatic redirect if user accesses wrong portal (barber→customer UI)
+
+3. Firestore Data Integrity Measures
+
+Create schema validation rules:
+
+javascript
+Copy
+match /users/{userId} {
+  allow read: if request.auth.uid == userId;
+  allow write: if request.resource.data.keys().hasAll(['isServiceProvider']) 
+              && typeof(request.resource.data.isServiceProvider) == 'boolean';
+}
+Implement historical versioning for user type changes
+
+Set up Cloud Function triggers to audit permission changes
+
+4. UI Rendering Safeguards
+
+Develop multi-layer rendering checks:
+
+Device-level authentication state verification
+
+Fresh Firestore data fetch on app resume
+
+Visual confirmation system (watermark overlays showing user type)
+
+Feature lockdown for mismatched permissions
+
+5. Debugging Infrastructure
+
+Implement forensic logging:
+
+Track user type decision path through analytics events
+
+Record screen transition attempts with timestamp/UID
+
+Create error taxonomy:
+
+E1: Missing user type flag
+
+E2: UI-component mismatch
+
+E3: Cross-role access attempt
+
+6. Recovery Protocol
+
+Build automatic fallback states:
+
+If user type undefined → redirect to role selection
+
+If data mismatch detected → trigger admin alert
+
+Persistent errors → temporary access revocation
+
+Develop manual override system with admin PIN protection
+
+7. Testing Matrix Requirements
+
+Create 12 test scenarios:
+
+User Type	Login Method	Network State	Expected Outcome
+Valid Customer	Email	Online	Customer UI
+Valid Barber	Email	Offline	Barber UI (cached)
+... (expand with edge cases)
+8. User Session Hardening
+
+Implement session fingerprinting:
+
+Device ID binding
+
+Location pattern analysis
+
+Usage behavior profiling
+
+Establish automatic session termination for:
+
+Cross-role component access attempts
+
+Rapid screen switching anomalies
+
+Backend data conflicts
+
+9. UI Component Isolation
+
+Develop feature quarantine system:
+
+Barber-specific components self-disable in customer context
+
+Customer features auto-hide with CSS masking in barber UI
+
+Implement runtime component validation checks
+
+10. Continuous Monitoring Setup
+
+Configure real-time alerts for:
+
+User type field modifications
+
+Cross-portal navigation patterns
+
+Authentication state conflicts
+
+Build dashboard tracking:
+
+Role-based active sessions
+
+UI rendering failures
+
+Permission validation latency
+
+Implementation Strategy:
+
+Start with data integrity audits (points 3,10)
+
+Build authentication safeguards (points 2,8)
+
+Implement UI quarantine system (points 4,9)
+
+Deploy monitoring infrastructure (points 5,10)
+
+Critical First Steps:
+
+Export all user documents and verify isServiceProvider field:
+
+Existence check
+
+Boolean validation
+
+Historical consistency audit
+
+Implement temporary client-side lockdown:
+
+Show maintenance screen during role validation
+
+Disable all role-specific features until validation completes
+Let's break this down into a structured action plan to resolve the user type differentiation and screen rendering issues:
+
+1. Data Integrity Foundation
+
+Firestore Document Audit:
+Export all user documents → Verify every entry has:
+
+isServiceProvider field exists
+
+Field value is strictly boolean (true/false)
+
+No null/undefined/string values present
+
+Field Enforcement Protocol:
+Implement server-side rules:
+
+javascript
+Copy
+match /users/{userId} {
+  allow write: if request.resource.data.isServiceProvider is boolean
+             && request.resource.data.isServiceProvider != null;
+}
+2. Authentication Flow Hardening
+
+Pre-Navigation Checklist:
+Before any screen redirects, require:
+
+Fresh Firestore data fetch (no cache)
+
+Three consecutive validations of user type
+
+Network connectivity confirmation
+
+Session Fingerprinting:
+Bind sessions to:
+
+Device hardware ID
+
+Last-known valid user type
+
+Geographic login pattern
+
+3. UI Rendering Safeguards
+
+Layer 1: Component Quarantine
+Wrap all role-specific features with:
+
+dart
+Copy
+Visibility(
+  visible: context.watch<UserProvider>().isValidBarber,
+  child: [Barber Feature],
+)
+Layer 2: Visual Confirmation
+Implement persistent UI indicators:
+
+Customer UI: Blue header banner with "CUSTOMER MODE"
+
+Barber UI: Red footer bar with "BARBER DASHBOARD"
+
+4. Error Recovery System
+
+Automated Response Matrix:
+
+Error Type	Response
+Missing user type	Force re-authentication → Role selection screen
+Data conflict	Freeze UI → Show admin contact overlay
+Session mismatch	Logout → Send security alert email
+5. Testing Protocol
+
+Scenario Simulation:
+
+Valid customer → locked customer UI test
+
+Valid barber → restricted barber tools test
+
+Modified user type → session invalidation test
+
+6. Monitoring Infrastructure
+
+Create real-time dashboard tracking:
+
+User type validation success rate
+
+Screen rendering failures per session
+
+Cross-role access attempt frequency
+
+Implementation Sequence:
+
+Phase 1 (48hrs): Data cleanup + Firestore rules
+
+Phase 2 (72hrs): Authentication hardening + UI safeguards
+
+Phase 3 (Ongoing): Monitoring + automated recovery
+
+First Immediate Steps:
+
+Run this emergency data validation query:
+
+bash
+Copy
+firebase firestore:query users --project=YOUR_PROJECT_ID 
+--where="isServiceProvider" --filter="isServiceProvider != true && isServiceProvider != false"
+Add temporary UI lockdown:
+
+dart
+Copy
+Widget build(BuildContext context) {
+  if (userType == null) return MaintenanceScreen();
+  // Original logic
+}
