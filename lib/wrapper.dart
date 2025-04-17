@@ -10,6 +10,35 @@ import 'screens/barber/barber_home_page.dart';
 import 'screens/maintenance/maintenance_screen.dart';
 import 'models/user_model.dart';
 
+class Wrapper extends StatelessWidget {
+  const Wrapper({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const CircularProgressIndicator();
+        }
+        
+        if (snapshot.hasData) {
+          // User is logged in
+          return CustomerHomePage(userData: UserModel(
+            id: snapshot.data!.uid,
+            email: snapshot.data!.email ?? '',
+            userType: 'customer', // Default to customer, you might want to fetch this from Firestore
+          ));
+        }
+        
+        // User is not logged in
+        return const LoginScreen();
+      },
+    );
+  }
+}
+
+// Remove the StatelessWidget version and keep only the StatefulWidget version
 class Wrapper extends StatefulWidget {
   const Wrapper({Key? key}) : super(key: key);
 

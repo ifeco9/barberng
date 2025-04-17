@@ -1,19 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
+import '../../models/appointment.dart';
+import '../../services/appointment_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
-import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'product_search_screen.dart';
-import 'service_search_screen.dart';
-import 'appointments_screen.dart';
-import 'profile_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../../widgets/appointment_card.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/custom_bottom_nav_bar.dart';
 import '../../widgets/custom_card.dart';
 import '../../widgets/custom_empty_state.dart';
 import '../../widgets/custom_loading_indicator.dart';
+import '../../widgets/quick_action_button.dart';
 import '../../theme/app_theme.dart';
 
 class CustomerHomePage extends StatefulWidget {
@@ -483,4 +480,103 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
       ],
     );
   }
-} 
+}
+
+
+class CustomerHomePage extends StatelessWidget {
+  final UserModel userData;
+
+  const CustomerHomePage({
+    Key? key,
+    required this.userData,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Welcome'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              Navigator.pushNamed(context, '/profile');
+            },
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                QuickActionButton(
+                  icon: Icons.calendar_today,
+                  label: 'Book\nAppointment',
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/book');
+                  },
+                ),
+                QuickActionButton(
+                  icon: Icons.history,
+                  label: 'Appointment\nHistory',
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/history');
+                  },
+                ),
+                QuickActionButton(
+                  icon: Icons.person_search,
+                  label: 'Find\nBarber',
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/barbers');
+                  },
+                ),
+              ],
+            ),
+          ),
+          const Divider(),
+          Expanded(
+            child: StreamBuilder<List<Appointment>>(
+              stream: AppointmentService()
+                  .watchAppointments(userData.id, false),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final appointments = snapshot.data!;
+                if (appointments.isEmpty) {
+                  return const Center(
+                    child: Text('No upcoming appointments'),
+                  );
+                }
+
+                return ListView.builder(
+                  itemCount: appointments.length,
+                  itemBuilder: (context, index) {
+                    return AppointmentCard(
+                      appointment: appointments[index],
+                      onTap: () {
+                        Navigator.pushNamed(
+                          context,
+                          '/appointment-details',
+                          arguments: appointments[index],
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

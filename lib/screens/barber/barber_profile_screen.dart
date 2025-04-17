@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/user_model.dart';
 import '../../services/storage_service.dart';
 import '../../services/auth_service.dart';
@@ -185,4 +187,4 @@ class _BarberProfileScreenState extends State<BarberProfileScreen> {
       ),
     );
   }
-} 
+}

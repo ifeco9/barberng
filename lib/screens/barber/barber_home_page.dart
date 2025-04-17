@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
+import '../../models/appointment.dart';
+import '../../services/appointment_service.dart';
+import '../../widgets/appointment_card.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 import 'package:intl/intl.dart';
@@ -26,7 +29,8 @@ class BarberHomePage extends StatefulWidget {
 class _BarberHomePageState extends State<BarberHomePage> {
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
-  bool _isLoading = true;
+  final _appointmentService = AppointmentService();
+  bool _isLoading = false;
   UserModel? _userData;
   List<Map<String, dynamic>> _appointments = [];
   List<Map<String, dynamic>> _services = [];
@@ -459,4 +463,92 @@ class _BarberHomePageState extends State<BarberHomePage> {
       backgroundColor: color,
     );
   }
-} 
+}
+
+
+class BarberHomePage extends StatefulWidget {
+  final UserModel userData;
+
+  const BarberHomePage({
+    Key? key,
+    required this.userData,
+  }) : super(key: key);
+
+  @override
+  State<BarberHomePage> createState() => _BarberHomePageState();
+}
+
+class _BarberHomePageState extends State<BarberHomePage> {
+  final _appointmentService = AppointmentService();
+  bool _isLoading = false;
+
+  Future<void> _handleStatusChange(String appointmentId, String newStatus) async {
+    setState(() => _isLoading = true);
+    try {
+      await _appointmentService.updateAppointmentStatus(appointmentId, newStatus);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Barber Dashboard'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              Navigator.pushNamed(context, '/profile');
+            },
+          ),
+        ],
+      ),
+      body: StreamBuilder<List<Appointment>>(
+        stream: _appointmentService.watchBarberAppointments(widget.userData.id),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final appointments = snapshot.data!;
+          if (appointments.isEmpty) {
+            return const Center(child: Text('No appointments yet'));
+          }
+
+          return ListView.builder(
+            itemCount: appointments.length,
+            itemBuilder: (context, index) {
+              final appointment = appointments[index];
+              return AppointmentCard(
+                appointment: appointment,
+                onStatusChange: _isLoading
+                    ? null
+                    : (status) => _handleStatusChange(appointment.id, status),
+              );
+            },
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.pushNamed(context, '/services');
+        },
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}

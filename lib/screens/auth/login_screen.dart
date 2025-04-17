@@ -1,11 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../services/auth_service.dart';
-import '../../services/firestore_service.dart';
-import '../main/barber/barber_home_page.dart';
-import '../main/customer/customer_home_page.dart';
-import 'signup_screen.dart';
-import '../../models/user_model.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -16,112 +10,43 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  bool _obscurePassword = true;
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _isLoading = false;
+  String? _errorMessage;
 
-  void _login() async {
-    if (_formKey.currentState!.validate()) {
-      try {
-        setState(() => _isLoading = true);
-        final authService = AuthService();
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
 
-        try {
-          // First authenticate the user
-          final userCredential = await authService.signInWithEmailAndPassword(
-            _emailController.text.trim(),
-            _passwordController.text,
-          );
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-          print("Authentication successful for UID: ${userCredential.user?.uid}");
-
-          // Check if we have a user
-          if (userCredential.user == null) {
-            throw Exception("User is null after login");
-          }
-
-          // Now retrieve user data separately
-          _getUserDataAndNavigate(userCredential.user!.uid);
-        } on FirebaseAuthException catch (e) {
-          // Handle the recovered-user case
-          if (e.code == 'recovered-user') {
-            print("Using recovered user UID: ${e.message}");
-            _getUserDataAndNavigate(e.message!);
-            return;
-          }
-          rethrow;
-        }
-      } catch (e) {
-        print("Authentication error: $e");
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Login failed: ${e.toString()}'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          setState(() => _isLoading = false);
-        }
-      }
-    }
-  }
-
-  // Add this helper method to separate user data retrieval
-  void _getUserDataAndNavigate(String uid) async {
     try {
-      final firestoreService = FirestoreService();
-      final userData = await firestoreService.getUserById(uid);
-
-      if (userData != null) {
-        print('User data loaded: ${userData.toMap()}');
-        print('Is service provider: ${userData.isServiceProvider}');
-        
-        if (mounted) {
-          // Navigate based on user type
-          if (userData.isServiceProvider) {
-            print('Navigating to BarberHomePage');
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => BarberHomePage(
-                  userData: userData,
-                ),
-              ),
-            );
-          } else {
-            print('Navigating to CustomerHomePage');
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => CustomerHomePage(
-                  userData: userData,
-                ),
-              ),
-            );
-          }
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        switch (e.code) {
+          case 'user-not-found':
+            _errorMessage = 'No user found with this email';
+            break;
+          case 'wrong-password':
+            _errorMessage = 'Wrong password';
+            break;
+          default:
+            _errorMessage = e.message;
         }
-      } else {
-        print("No user data found for UID: $uid");
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Error: User data not found. Please try again or contact support.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          setState(() => _isLoading = false);
-        }
-      }
+      });
     } catch (e) {
-      print("Error getting user data: $e");
+      setState(() {
+        _errorMessage = 'An error occurred during login';
+      });
+    } finally {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error loading your profile. Please try again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
         setState(() => _isLoading = false);
       }
     }
@@ -130,100 +55,90 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Login'),
-        backgroundColor: Colors.green,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Icon(
-                Icons.account_circle,
-                size: 100,
-                color: Colors.green,
-              ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: _emailController,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: const Icon(Icons.email),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 48),
+                Text(
+                  'Welcome Back',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                  textAlign: TextAlign.center,
                 ),
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                    return 'Please enter a valid email';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _passwordController,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: const Icon(Icons.lock),
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
+                const SizedBox(height: 32),
+                TextFormField(
+                  controller: _emailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.email),
                   ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your email';
+                    }
+                    return null;
+                  },
                 ),
-                obscureText: _obscurePassword,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your password';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _login,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _passwordController,
+                  decoration: const InputDecoration(
+                    labelText: 'Password',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.lock),
                   ),
+                  obscureText: true,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your password';
+                    }
+                    return null;
+                  },
                 ),
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                        'Login',
-                        style: TextStyle(fontSize: 18),
-                      ),
-              ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const SignupScreen()),
-                  );
-                },
-                child: const Text('Don\'t have an account? Sign Up'),
-              ),
-            ],
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _login,
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Login'),
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/signup');
+                  },
+                  child: const Text('Don\'t have an account? Sign up'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 }
